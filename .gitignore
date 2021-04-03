@@ -1,0 +1,16 @@
+#ropeproject
+.ropeproject/
+
+target/
+
+#docker
+docker/wheelhouse/*
+
+#tox
+*.tox
+
+#pycharm
+*.idea
+
+#vim
+*.tags
