@@ -23,7 +23,7 @@ There are three API endpoints:
 You need Maven, Git and  Java SE Runtime Environment 11 (minimum)  to run this project. 
 
 ```
-https://www.oracle.com/java/technologies/javase-jre8-downloads.html
+https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
 https://maven.apache.org/install.html
 https://git-scm.com
 ```
@@ -65,7 +65,7 @@ curl http://localhost:8080/ticks --header "Content-Type: application/json"  --re
 
 ####Querying the Statistics of all instruments:
 ```
-curl http://localhost:8080/stats
+curl http://localhost:8080/statistics
 ```
 
 ### Built With
@@ -74,7 +74,7 @@ curl http://localhost:8080/stats
 * [Maven](https://maven.apache.org/) - Dependency Management
  
 
-### Authors
+### Author
 
 * **Cenk Uyan** - [github/cnkuyan](https://github.com/cnkuyan)
 
