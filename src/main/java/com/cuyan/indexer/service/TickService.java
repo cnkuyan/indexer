@@ -22,13 +22,10 @@ public class TickService {
 
     Logger log = LoggerFactory.getLogger(TickService.class);
 
-    private  Map<String, TickStats> statsMap = null;
     private  long windowMsecs = 0;
+    private  Map<String, TickStats> statsMap = null;
     private SlidingWindow slidingWindow = null;
 
-
-    //@Autowired
-    //private SlidingWindowService swService = null;
 
     /**
      *
@@ -53,14 +50,9 @@ public class TickService {
     private void init(int aSize, long aWindowMsecs, long aTimerRefreshPeriodMsecs){
         windowMsecs = aWindowMsecs;
         statsMap = new ConcurrentHashMap<>();
-        //startSWService();
         slidingWindow = new SlidingWindow(aSize,windowMsecs,aTimerRefreshPeriodMsecs);
         slidingWindow.start();
 
-    }
-
-    public void start() {
-        slidingWindow.start();
     }
 
     @PreDestroy
@@ -69,24 +61,35 @@ public class TickService {
     }
 
     /**
+     * Called by the TickController to register a Tick in the order it is received.
      *
-     * @param aPlainTick
-     * @return
+     * it checks the timestamp field of the given Tick, and accepts it only if it's still in the
+     * last windowMsecs based on server's  current datetime
+     *
+     * It accepts it if it is, rejects it otherwise
+     *
+     * @param aTick
+     * @return  HttpStatus.NO_CONTENT if the Tick is older than the tail of the sliding time window
+     *          HttpStatus.OK  if the Tick is accepted
      */
-    public ResponseEntity add(Tick aPlainTick) {
+    public ResponseEntity add(Tick aTick) {
 
-        Instant tickts = Instant.ofEpochMilli(aPlainTick.getTimestamp());
+        Instant tickts = Instant.ofEpochMilli(aTick.getTimestamp());
         if(! SlidingWindow.is_within_window(tickts,ZonedDateTime.now(), windowMsecs)) {
             log.error("add: HttpStatus.NO_CONTENT");
             return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
         } else {
-            slidingWindow.add(aPlainTick);
-            log.info("add: HttpStatus.OK");
+            slidingWindow.add(aTick);
+            log.debug("add: HttpStatus.OK");
             return new ResponseEntity<>(null, HttpStatus.OK);
         }
 
     }
 
+    /**
+     * Called by the TickController to refresh the snapshot of the TickStats map
+     * @return
+     */
     private Map<String, TickStats> refreshMap() {
 
         statsMap = slidingWindow.getStats();
@@ -94,12 +97,24 @@ public class TickService {
 
     }
 
+    /**
+     * Called by the TickController to obtain the snapshot of the TickStats map
+     * containing all relevant Instruments
+     *
+     * @return
+     */
     public Map<String, TickStats> stats() {
-        //final ReadOnlyKeyValueStore<String, TickStats> store =interactiveQueryService.getQueryableStore("tick-stats", QueryableStoreTypes.<String, TickStats>keyValueStore());
         Map<String, TickStats> ret = refreshMap();
         return ret;
     }
 
+    /**
+     * Called by the TickController to obtain the snapshot of the TickStats instance
+     * belonging to the given instrument
+     *
+     * @param instrument
+     * @return
+     */
     public TickStats stats(String instrument) {
         TickStats ret = refreshMap().get(instrument);
         return ret;

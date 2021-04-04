@@ -39,19 +39,18 @@ class SlidingWindowTest {
 		final int TICK_CNT = 5;
 		SlidingWindow sw = new SlidingWindow(64, (TICK_CNT+2) * MSECS_PER_SECOND, 1 * MSECS_PER_SECOND);
 
-		ZonedDateTime start_time = ZonedDateTime.now();
-		long epoch_msecs_till_now = start_time.toEpochSecond() * MSECS_PER_SECOND;
-
 		String instrument = "XYZ";
+		ZonedDateTime start_time = ZonedDateTime.now();
+		long epoch_now = start_time.toEpochSecond() * MSECS_PER_SECOND;
 
 		List<Tick> ticks = new ArrayList<>(TICK_CNT);
 
 		//Create ticks , younger from older
-		ticks.add(new Tick(instrument,10,epoch_msecs_till_now - (long)( (TICK_CNT) * MSECS_PER_SECOND)));
-		ticks.add(new Tick(instrument,20,epoch_msecs_till_now - (long)( (TICK_CNT-1) * MSECS_PER_SECOND)));
-		ticks.add(new Tick(instrument,30,epoch_msecs_till_now - (long)( (TICK_CNT-2) * MSECS_PER_SECOND)));
-		ticks.add(new Tick(instrument,40,epoch_msecs_till_now - (long)( (TICK_CNT-3) * MSECS_PER_SECOND)));
-		ticks.add(new Tick(instrument,50,epoch_msecs_till_now - (long)( (TICK_CNT-4) * MSECS_PER_SECOND)));
+		ticks.add(new Tick(instrument,10,epoch_now - (long)( (1) * MSECS_PER_SECOND)));
+		ticks.add(new Tick(instrument,20,epoch_now - (long)( (2) * MSECS_PER_SECOND)));
+		ticks.add(new Tick(instrument,30,epoch_now - (long)( (3) * MSECS_PER_SECOND)));
+		ticks.add(new Tick(instrument,40,epoch_now - (long)( (4) * MSECS_PER_SECOND)));
+		ticks.add(new Tick(instrument,50,epoch_now - (long)( (5) * MSECS_PER_SECOND)));
 
 
 		//Add ticks to the slidingwindow, young first
@@ -64,8 +63,8 @@ class SlidingWindowTest {
 
 		//Start the slidingwindow processing
 		//Expect: old ticks consumed first
-
 		sw.start();
+
 		Thread.sleep((long) 1 * MSECS_PER_SECOND);
 
 		Map<String, TickStats> sm = sw.getStats();
@@ -78,13 +77,28 @@ class SlidingWindowTest {
 		Thread.sleep((long) 2.5 * MSECS_PER_SECOND);
 
 		sm = sw.getStats();
-		System.out.println(sm);
 		assertEquals(TICK_CNT-1,sm.get(instrument).getCount());
 		assertEquals(10.0,sm.get(instrument).getMin());
 		assertEquals(40.0,sm.get(instrument).getMax());
-		assertEquals(0.0,sm.get(instrument).getAvg());
+		assertEquals(25.0,sm.get(instrument).getAvg());
 
+		Thread.sleep((long) 1 * MSECS_PER_SECOND);
 
+		sm = sw.getStats();
+		assertEquals(TICK_CNT-2,sm.get(instrument).getCount());
+		assertEquals(10.0,sm.get(instrument).getMin());
+		assertEquals(30.0,sm.get(instrument).getMax());
+		assertEquals(20.0,sm.get(instrument).getAvg());
+
+		Thread.sleep((long) 1 * MSECS_PER_SECOND);
+
+		sm = sw.getStats();
+		assertEquals(TICK_CNT-3,sm.get(instrument).getCount());
+		assertEquals(10.0,sm.get(instrument).getMin());
+		assertEquals(20.0,sm.get(instrument).getMax());
+		assertEquals(15.0,sm.get(instrument).getAvg());
+
+		sw.stop();
 	}
 
 

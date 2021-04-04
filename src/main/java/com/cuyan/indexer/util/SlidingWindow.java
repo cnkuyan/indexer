@@ -17,13 +17,14 @@ public class SlidingWindow implements Runnable{
 
     Logger logger = LoggerFactory.getLogger(SlidingWindow.class);
 
+    private int arrivalBufferSize = 0;
     private long windowMillis = 0;
     private long timerRefreshMSecs = 0;
     private boolean isRunning = false;
 
     private Deque<Tick> tickArrivals = null;
 
-    private Map<String, TreeSet<Tick>> tickerMap = null;
+    private Map<String, PriorityQueue<Tick>> tickerMap = null;
     private Map<String, TickStats> tickerStatsMap = null;
     private Map<String, PriorityQueue<Tick>> tickerMinPQMap;
     private Map<String, PriorityQueue<Tick>> tickerMaxPQMap;
@@ -34,19 +35,52 @@ public class SlidingWindow implements Runnable{
     private Object stats_lock = new Object();
     private Thread t = null;
     private Timer pruneTimer = null;
+    private Comparator<Tick> timeStampComparator = null;
+    private Comparator<Tick> minPriceComparator = null;
+    private Comparator<Tick> maxPriceComparator = null;
 
 
+    /**
+     * Initializes the sliding time window
+     * Also initializes the following Comparators;
+     *
+     * The comparator that's used to decide how to order an incoming @see Tick
+     * (by the order of the timestamp field, larger number first - which means an older Tick )
+     *
+     * The comparator that's used to order Ticks by their prices in ascending order
+     * The comparator that's used to order Ticks by their prices in descending order
+     *
+     * @param bufferSize  the size of the blocking buffer the incoming ticks are queued in the order they are added
+     * @param aWindowMsecs the duration of the sliding time windows in milliseconds
+     * @param aTimerRefreshMSecs the duration of the period the periodic pruner task runs
+     */
     public SlidingWindow(int bufferSize, long aWindowMsecs, long aTimerRefreshMSecs) {
+        arrivalBufferSize = bufferSize;
         windowMillis = aWindowMsecs;
         timerRefreshMSecs= aTimerRefreshMSecs;
         tickArrivals = new ArrayDeque<>(bufferSize);
+
+        timeStampComparator = (a, b) -> {
+            return (int) (a.getTimestamp() - b.getTimestamp());
+        };
+
+        minPriceComparator = (a, b) -> {
+            return (int) (a.getPrice() - b.getPrice());
+        };
+
+        maxPriceComparator = (a, b) -> {
+            return (int) (b.getPrice() - a.getPrice());
+        };
 
         initMaps();
 
     }
 
     /**
-     *
+     * Starts the thread that waits on the ticksarrival queye to consume from it
+     * Also starts the timer that periodically runs the prune task that retires the
+     * ticks that fall behind the sliding time window of duration aWindowMsecs
+     * @see SlidingWindow
      */
     public void start() {
 
@@ -58,7 +92,7 @@ public class SlidingWindow implements Runnable{
     }
 
     /**
-     *
+     * Stops the consuming thread, and the prune periodic task
      */
     public void stop() {
         logger.debug("SlidingWindow stop() called!");
@@ -68,12 +102,18 @@ public class SlidingWindow implements Runnable{
     }
 
     /**
+     * Called by the @see TickController to add an incoming Tick in the order it was received.
+     * If there is still space in the intermediate buffer defined by arrivalBufferSize ,
+     * the Tick will be added at the end, and the consumer thread will be notified.
      *
-     * @param aPlainTick
+     * The call will only block only when the intermediate buffer is full.
+     *
+     * This case may happen if there are more incoming Ticks than the consumer thread alone can consume
+     * from the tickArrivals
      */
     public synchronized void add(Tick aPlainTick) {
 
-        while (tickArrivals.size() == MAX_QUEUE_SIZE)  {
+        while (tickArrivals.size() == arrivalBufferSize)  {
             try {
                 wait();
             } catch (InterruptedException e) {
@@ -89,11 +129,11 @@ public class SlidingWindow implements Runnable{
     }
 
     /**
-     *
+     * Initializes the map data structures used throughout
      */
     private void initMaps() {
 
-        tickerMap = new HashMap<String, TreeSet<Tick>>();
+        tickerMap = new HashMap<String, PriorityQueue<Tick>>();
         tickerStatsMap = new HashMap<>();
         tickerMinPQMap = new HashMap<String, PriorityQueue<Tick>>();
         tickerMaxPQMap = new HashMap<String, PriorityQueue<Tick>>();
@@ -102,8 +142,8 @@ public class SlidingWindow implements Runnable{
     }
 
     /**
-     *
-     * @param aPeriod
+     * Starts the periodic prune task
+     * @param aPeriod duration of the period in milliseconds
      */
     private void startTimer(long aPeriod) {
 
@@ -115,10 +155,23 @@ public class SlidingWindow implements Runnable{
 
 
     /**
-     *  Consumes a PriceEqualTick from the head of the queue upon waking
-     *  Blocks if the queue is empty,
+     * Consumes a Tick from the head of the tickArrivals queue upon waking
+     * blocks and waits for notification if the queue is empty
      *
-     *  Adds it to the
+     * Upon picking the next Tick in the order it came, it adds it to the sliding window queue
+     * which is backed by a PriorityQueue, initialized with the timeStampComparator .
+     * The sliding window PQ always gives the oldest Tick (based on its timestamp field) when as its top element.
+     *
+     * It also adds the incoming Tick to the appropriate PQs , to calculate the min and max price,
+     * and to update the average price and the count of the instrument identified by the Tick
+     * within the valid time window.
+     *
+     * It also updates the TickerStatus map that's used to provide the real time statistics of all instruments
+     * currently active within the defined sliding window of time.
+     *
+     * Time Complexity: O(logN)
+     * Space Complexity O(N)
+     *
      */
     private synchronized void consumeTick() {
 
@@ -131,36 +184,35 @@ public class SlidingWindow implements Runnable{
         }
 
         Tick aPlainTick =  tickArrivals.pollFirst();
-        //PriceEqualTick aPlainTick = (PriceEqualTick) tickArrivals.pollFirst();
-        TreeSet<Tick> tickQ = tickerMap.get(aPlainTick.getInstrument());
+        PriorityQueue<Tick> tickQ = tickerMap.get(aPlainTick.getInstrument());
 
         synchronized (lock) {
-            //addToSortedSet(tickQ, , aPlainTick);
-            addToSortedSet(tickQ, (a, b) -> {
-                return (int) (b.getTimestamp() - a.getTimestamp());
-            }, aPlainTick);
+            addToQueue(tickQ, timeStampComparator, aPlainTick);
 
-            addTickToPQ(tickerMinPQMap, (a, b) -> {
-                return (int) (a.getPrice() - b.getPrice());
-            }, aPlainTick);
-            addTickToPQ(tickerMaxPQMap, (a, b) -> {
-                return (int) (b.getPrice() - a.getPrice());
-            }, aPlainTick);
+            addTickToPQ(tickerMinPQMap, minPriceComparator, aPlainTick);
+            addTickToPQ(tickerMaxPQMap, maxPriceComparator, aPlainTick);
 
             addToTotalPrice(aPlainTick);
             addToTotalCount(aPlainTick);
         }
 
         synchronized (stats_lock) {
-            addToTickerStatus(aPlainTick);
+            addToTickerStats(aPlainTick);
         }
 
 
     }
 
-    private void removeFromTickerStatus(Tick aPlainTick) {
+    /**
+     * Updates the TickerStatus map for a Tick that's being removed from the sliding time window
+     * If there are no more relevant Tick is left in the sliding time window, it removes the key from the map
+     * completely
+     *
+     * @param aPlainTick
+     */
+    private void removeFromTickerStats(Tick aPlainTick) {
 
-        TreeSet<Tick> tickQ = tickerMap.get(aPlainTick.getInstrument());
+        PriorityQueue<Tick> tickQ = tickerMap.get(aPlainTick.getInstrument());
 
         if (tickQ == null) {
             tickerStatsMap.remove(aPlainTick.getInstrument());
@@ -171,7 +223,13 @@ public class SlidingWindow implements Runnable{
     }
 
 
-    private void addToTickerStatus(Tick aPlainTick) {
+    /**
+     * Updates the TickerStatus map for a Tick that's being introduced to the sliding time window
+     * If this is first time this instrument is seen, a new key gets created and inserted in to the map
+     *
+     * @param aPlainTick
+     */
+    private void addToTickerStats(Tick aPlainTick) {
         TickStats ts = tickerStatsMap.get(aPlainTick.getInstrument());
 
         if (ts == null) {
@@ -181,6 +239,14 @@ public class SlidingWindow implements Runnable{
         updateStats(aPlainTick, ts);
     }
 
+    /**
+     * Updates the TickStats map according to the given Tick
+     * Time Complexity: O(1)
+     * Space Complexity O(N)
+     *
+     * @param aPlainTick
+     * @param ts
+     */
     private void updateStats(Tick aPlainTick, TickStats ts) {
         ts.setCount(tickerTotalCountMap.get(aPlainTick.getInstrument()));
         ts.setMin(getMin(aPlainTick.getInstrument(), aPlainTick.getPrice()));
@@ -190,20 +256,37 @@ public class SlidingWindow implements Runnable{
     }
 
 
+    /**
+     * Calculates the minimum price of the given instrument within the current sliding time window
+     * Time Complexity: O(1)
+     * Space Complexity O(N)
+     * @param anInstrument
+     * @param aDefaultVal
+     * @return the min price
+     */
     private Double getMin(String anInstrument, Double aDefaultVal ){
 
         Double ret = aDefaultVal;
-        PriorityQueue<Tick> pq = tickerMinPQMap.get(anInstrument);
 
-        if (pq != null) {
-            Tick t = pq.peek();
-            if (t != null) {
-                ret = t.getPrice();
-            }
+        Optional<PriorityQueue<Tick>> pq = Optional.ofNullable(tickerMinPQMap.get(anInstrument));
+        if (pq.isPresent()) {
+            return pq.get().peek().getPrice();
+        }
+        else {
+            return aDefaultVal;
         }
 
-        return ret;
     }
+
+    /**
+     * Calculates the maximum price of the given instrument within the current sliding time window
+     * Time Complexity: O(1)
+     * Space Complexity O(N)
+     *
+     * @param anInstrument
+     * @param aDefaultVal
+     * @return the max price
+     */
 
     private Double getMax(String anInstrument, Double aDefaultVal){
 
@@ -219,6 +302,13 @@ public class SlidingWindow implements Runnable{
 
     }
 
+    /**
+     * Calculates the average price of the given instrument within the current sliding time window
+     * Time Complexity: O(1)
+     * Space Complexity O(1)
+     * @param anInstrument
+     * @return the average price
+     */
     public Double getAvg(String anInstrument ){
 
         Optional<Double> optval = Optional.ofNullable(tickerTotalPriceMap.get(anInstrument));
@@ -233,7 +323,7 @@ public class SlidingWindow implements Runnable{
 
 
     /**
-     * Adds the price of instrument into the total
+     * Adds the price of the given instrument into the running total
      * Time Complexity O(1)
      * Space Complexity O(1)
      * @param aPlainTick
@@ -251,7 +341,7 @@ public class SlidingWindow implements Runnable{
      * Space Complexity O(1)
      * @param aPlainTick
      */
-    private void removeFromTotalPrice(Tick aPlainTick) {
+    private void subtractFromTotalPrice(Tick aPlainTick) {
 
         Double val = tickerTotalPriceMap.get(aPlainTick.getInstrument());
 
@@ -279,7 +369,7 @@ public class SlidingWindow implements Runnable{
      * Space Complexity O(1)
      * @param aPlainTick
      */
-    private void removeFromTotalCount(Tick aPlainTick) {
+    private void subtractFromTotalCount(Tick aPlainTick) {
 
         Long val = tickerTotalCountMap.get(aPlainTick.getInstrument());
 
@@ -291,12 +381,12 @@ public class SlidingWindow implements Runnable{
     /**
      * Updates the statistics of instrument that's leaving the window
      * Time Complexity O(1)
-     * Space Complexity O(1)
+     * Space Complexity O(N)
      * @param aPlainTick
      */
-    private TreeSet<Tick> remove(TreeSet<Tick> tickQ, Tick aPlainTick) {
+    private PriorityQueue<Tick> remove(PriorityQueue<Tick> tickQ, Tick aPlainTick) {
 
-        TreeSet<Tick> ret = null;
+        PriorityQueue<Tick> ret = null;
 
         synchronized (lock) {
             ret = removeFromQueue(tickQ, aPlainTick.getInstrument());
@@ -304,8 +394,8 @@ public class SlidingWindow implements Runnable{
                 removeTickFromPQ(tickerMinPQMap,  aPlainTick);
                 removeTickFromPQ(tickerMaxPQMap,  aPlainTick);
 
-                removeFromTotalPrice(aPlainTick);
-                removeFromTotalCount(aPlainTick);
+                subtractFromTotalPrice(aPlainTick);
+                subtractFromTotalCount(aPlainTick);
             }
             else {
                 tickerMinPQMap.remove(aPlainTick.getInstrument());
@@ -317,7 +407,7 @@ public class SlidingWindow implements Runnable{
         }
 
         synchronized (stats_lock) {
-            removeFromTickerStatus(aPlainTick);
+            removeFromTickerStats(aPlainTick);
         }
 
         return ret;
@@ -326,8 +416,8 @@ public class SlidingWindow implements Runnable{
 
     /**
      * Updates the min/max price of the instrument that's entering the window
-     * Time Complexity O(log N)  Due to the rebalancing of he priority queue on insertion of new value
-     * Space Complexity O(1)
+     * Time Complexity O(log N)  due to the rebalancing of he priority queue on insertion of new value
+     * Space Complexity O(N)
      * @param aPQMap  min or max PQ
      * @param aComp  min or max Comparator
      * @param aPlainTick
@@ -346,8 +436,8 @@ public class SlidingWindow implements Runnable{
 
     /**
      * Updates the min/max price of the instrument that's leaving the window
-     * Time Complexity O(log N)  Due to the rebalancing of he priority queue on removal of value
-     * Space Complexity O(1)
+     * Time Complexity O(log N)  due to the rebalancing of he priority queue on removal of value
+     * Space Complexity O(N)
      * @param aPQMap  min or max PQ
      * @param aPlainTick
      */
@@ -371,21 +461,21 @@ public class SlidingWindow implements Runnable{
 
 
     /**
-     * Adds the instrument that's entering the window into the SortedSet acting as a Queue
-     * Time Complexity O(1)
-     * Space Complexity O(1)
+     * Adds the Tick that's entering the window into the queue (PriorityQueue)
+     * Time Complexity O(log N)  due to the rebalancing of the priority queue on value insertion
+     * Space Complexity O(N)
      *
-     * @param tickQ
-     * @param aComp
-     * @param aPlainTick
+     * @param tickQ the target queue
+     * @param aComp the comparator that places an older timestamped Tick at the front of the queue
+     * @param aPlainTick a Tick to enqueue
      */
-    private void addToSortedSet(TreeSet<Tick> tickQ, Comparator<Tick> aComp, Tick aPlainTick) {
+    private void addToQueue(PriorityQueue<Tick> tickQ, Comparator<Tick> aComp, Tick aPlainTick) {
 
         if (tickQ == null) {
-            tickQ = new TreeSet<>(aComp);
+            tickQ = new PriorityQueue<>(aComp);
         }
 
-        tickQ.add(aPlainTick);
+        tickQ.offer(aPlainTick);
         tickerMap.put(aPlainTick.getInstrument(), tickQ);
 
     }
@@ -393,19 +483,20 @@ public class SlidingWindow implements Runnable{
 
     /**
      * Removes the instrument that's leaving the window from the head of the queue
-     * Time Complexity O(1)
-     * Space Complexity O(1)
+     * Time Complexity O(log N)  due to the rebalancing of the priority queue on value removal
+     * Space Complexity O(N)
      * @param tickQ
      * @param anInstrument
      * @return tickQ
      */
-    private TreeSet<Tick> removeFromQueue(TreeSet<Tick> tickQ, String anInstrument) {
+    private PriorityQueue<Tick> removeFromQueue(PriorityQueue<Tick> tickQ, String anInstrument) {
 
         if (tickQ == null) {
             return null;
         }
 
-        tickQ.pollFirst();
+        Tick polled = tickQ.poll();
+        logger.info("removeFromQueue: removed [%s]" + polled);
 
         if(tickQ.isEmpty()) {
             tickerMap.remove(anInstrument);
@@ -430,15 +521,15 @@ public class SlidingWindow implements Runnable{
 
         Temporal now = ZonedDateTime.now() ;
 
-        for(TreeSet<Tick> tickQ : tickerMap.values()) {
-                Tick t = tickQ.first();
+        for(PriorityQueue<Tick> tickQ : tickerMap.values()) {
+                Tick t = tickQ.peek();
 
                 while (t != null) {
                     Instant tickts = Instant.ofEpochMilli(t.getTimestamp());
                     if (! is_within_window(tickts, now, windowMillis)) {
                         tickQ = remove(tickQ, t);
                         if (tickQ != null) {
-                            t = tickQ.first();
+                            t = tickQ.peek();
                         }
                     } else {
                         break;
@@ -448,6 +539,13 @@ public class SlidingWindow implements Runnable{
 
     }
 
+    /**
+     * Decides whether the given Tick is still relevant , given the current time and a time window
+     * @param tickTs  Tick's timestamp
+     * @param now  current time
+     * @param windowMillis duration of time window in milliseconds
+     * @return  true if the Tick's timestamp is within the specified window of time based on server's current time
+     */
     public static boolean is_within_window(Instant tickTs, Temporal now, long windowMillis) {
 
         Duration dur = Duration.between(tickTs, now);
@@ -457,6 +555,14 @@ public class SlidingWindow implements Runnable{
 
     }
 
+    /**
+     *  Called by the TickController to obtain the current snapshot the TickStats ( statistics)
+     *
+     *  The returned map will have keys only for those instruments that are still relevant within the
+     *  current sliding time window.
+     *
+     * @return TickStats map
+     */
     public Map<String, TickStats> getStats() {
 
         Map<String, TickStats> ret = null;
@@ -468,6 +574,9 @@ public class SlidingWindow implements Runnable{
         return ret;
     }
 
+    /**
+     * The worker method of the thread consuming from the ticksArrival dequeu
+     */
     @Override
     public void run() {
 
