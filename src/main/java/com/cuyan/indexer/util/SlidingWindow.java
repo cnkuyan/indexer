@@ -1,6 +1,6 @@
 package com.cuyan.indexer.util;
 
-import com.cuyan.indexer.model.Ticker;
+import com.cuyan.indexer.model.Tick;
 import com.cuyan.indexer.model.TickStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,12 +21,12 @@ public class SlidingWindow implements Runnable{
     private long timerRefreshMSecs = 0;
     private boolean isRunning = false;
 
-    private Deque<Ticker> tickArrivals = null;
+    private Deque<Tick> tickArrivals = null;
 
-    private Map<String, TreeSet<Ticker>> tickerMap = null;
+    private Map<String, TreeSet<Tick>> tickerMap = null;
     private Map<String, TickStats> tickerStatsMap = null;
-    private Map<String, PriorityQueue<Ticker>> tickerMinPQMap;
-    private Map<String, PriorityQueue<Ticker>> tickerMaxPQMap;
+    private Map<String, PriorityQueue<Tick>> tickerMinPQMap;
+    private Map<String, PriorityQueue<Tick>> tickerMaxPQMap;
     private Map<String, Double> tickerTotalPriceMap;
     private Map<String, Long> tickerTotalCountMap;
 
@@ -71,7 +71,7 @@ public class SlidingWindow implements Runnable{
      *
      * @param aPlainTick
      */
-    public synchronized void add(Ticker aPlainTick) {
+    public synchronized void add(Tick aPlainTick) {
 
         while (tickArrivals.size() == MAX_QUEUE_SIZE)  {
             try {
@@ -93,10 +93,10 @@ public class SlidingWindow implements Runnable{
      */
     private void initMaps() {
 
-        tickerMap = new HashMap<String, TreeSet<Ticker>>();
+        tickerMap = new HashMap<String, TreeSet<Tick>>();
         tickerStatsMap = new HashMap<>();
-        tickerMinPQMap = new HashMap<String, PriorityQueue<Ticker>>();
-        tickerMaxPQMap = new HashMap<String, PriorityQueue<Ticker>>();
+        tickerMinPQMap = new HashMap<String, PriorityQueue<Tick>>();
+        tickerMaxPQMap = new HashMap<String, PriorityQueue<Tick>>();
         tickerTotalPriceMap = new HashMap<>();
         tickerTotalCountMap = new HashMap<>();
     }
@@ -130,13 +130,13 @@ public class SlidingWindow implements Runnable{
             }
         }
 
-        Ticker aPlainTick =  tickArrivals.pollFirst();
+        Tick aPlainTick =  tickArrivals.pollFirst();
         //PriceEqualTick aPlainTick = (PriceEqualTick) tickArrivals.pollFirst();
-        TreeSet<Ticker> tickerQ = tickerMap.get(aPlainTick.getInstrument());
+        TreeSet<Tick> tickQ = tickerMap.get(aPlainTick.getInstrument());
 
         synchronized (lock) {
-            //addToSortedSet(tickerQ, , aPlainTick);
-            addToSortedSet(tickerQ, (a, b) -> {
+            //addToSortedSet(tickQ, , aPlainTick);
+            addToSortedSet(tickQ, (a, b) -> {
                 return (int) (a.getTimestamp() - b.getTimestamp());
             }, aPlainTick);
 
@@ -158,11 +158,11 @@ public class SlidingWindow implements Runnable{
 
     }
 
-    private void removeFromTickerStatus(Ticker aPlainTick) {
+    private void removeFromTickerStatus(Tick aPlainTick) {
 
-        TreeSet<Ticker> tickerQ = tickerMap.get(aPlainTick.getInstrument());
+        TreeSet<Tick> tickQ = tickerMap.get(aPlainTick.getInstrument());
 
-        if (tickerQ == null) {
+        if (tickQ == null) {
             tickerStatsMap.remove(aPlainTick.getInstrument());
             return;
         }
@@ -171,7 +171,7 @@ public class SlidingWindow implements Runnable{
     }
 
 
-    private void addToTickerStatus(Ticker aPlainTick) {
+    private void addToTickerStatus(Tick aPlainTick) {
         TickStats ts = tickerStatsMap.get(aPlainTick.getInstrument());
 
         if (ts == null) {
@@ -181,7 +181,7 @@ public class SlidingWindow implements Runnable{
         updateStats(aPlainTick, ts);
     }
 
-    private void updateStats(Ticker aPlainTick, TickStats ts) {
+    private void updateStats(Tick aPlainTick, TickStats ts) {
         ts.setCount(tickerTotalCountMap.get(aPlainTick.getInstrument()));
         ts.setMin(getMin(aPlainTick.getInstrument(), aPlainTick.getPrice()));
         ts.setMax(getMax(aPlainTick.getInstrument(), aPlainTick.getPrice()));
@@ -193,10 +193,10 @@ public class SlidingWindow implements Runnable{
     private Double getMin(String anInstrument, Double aDefaultVal ){
 
         Double ret = aDefaultVal;
-        PriorityQueue<Ticker> pq = tickerMinPQMap.get(anInstrument);
+        PriorityQueue<Tick> pq = tickerMinPQMap.get(anInstrument);
 
         if (pq != null) {
-            Ticker t = pq.peek();
+            Tick t = pq.peek();
             if (t != null) {
                 ret = t.getPrice();
             }
@@ -209,7 +209,7 @@ public class SlidingWindow implements Runnable{
 
         Double ret = aDefaultVal;
 
-        Optional<PriorityQueue<Ticker>> pq = Optional.ofNullable(tickerMaxPQMap.get(anInstrument));
+        Optional<PriorityQueue<Tick>> pq = Optional.ofNullable(tickerMaxPQMap.get(anInstrument));
         if (pq.isPresent()) {
             return pq.get().peek().getPrice();
         }
@@ -238,7 +238,7 @@ public class SlidingWindow implements Runnable{
      * Space Complexity O(1)
      * @param aPlainTick
      */
-    private void addToTotalPrice(Ticker aPlainTick) {
+    private void addToTotalPrice(Tick aPlainTick) {
 
         double optval = Optional.ofNullable(tickerTotalPriceMap.get(aPlainTick.getInstrument())).orElse(0.0);
 
@@ -251,7 +251,7 @@ public class SlidingWindow implements Runnable{
      * Space Complexity O(1)
      * @param aPlainTick
      */
-    private void removeFromTotalPrice(Ticker aPlainTick) {
+    private void removeFromTotalPrice(Tick aPlainTick) {
 
         Double val = tickerTotalPriceMap.get(aPlainTick.getInstrument());
 
@@ -266,7 +266,7 @@ public class SlidingWindow implements Runnable{
      * Space Complexity O(1)
      * @param aPlainTick
      */
-    private void addToTotalCount(Ticker aPlainTick) {
+    private void addToTotalCount(Tick aPlainTick) {
 
         long optval = Optional.ofNullable(tickerTotalCountMap.get(aPlainTick.getInstrument())).orElse(0L);
 
@@ -279,7 +279,7 @@ public class SlidingWindow implements Runnable{
      * Space Complexity O(1)
      * @param aPlainTick
      */
-    private void removeFromTotalCount(Ticker aPlainTick) {
+    private void removeFromTotalCount(Tick aPlainTick) {
 
         Long val = tickerTotalCountMap.get(aPlainTick.getInstrument());
 
@@ -294,12 +294,12 @@ public class SlidingWindow implements Runnable{
      * Space Complexity O(1)
      * @param aPlainTick
      */
-    private TreeSet<Ticker> remove(TreeSet<Ticker> tickerQ, Ticker aPlainTick) {
+    private TreeSet<Tick> remove(TreeSet<Tick> tickQ, Tick aPlainTick) {
 
-        TreeSet<Ticker> ret = null;
+        TreeSet<Tick> ret = null;
 
         synchronized (lock) {
-            ret = removeFromQueue(tickerQ, aPlainTick.getInstrument());
+            ret = removeFromQueue(tickQ, aPlainTick.getInstrument());
             if (ret != null) {
                 removeTickFromPQ(tickerMinPQMap,  aPlainTick);
                 removeTickFromPQ(tickerMaxPQMap,  aPlainTick);
@@ -332,9 +332,9 @@ public class SlidingWindow implements Runnable{
      * @param aComp  min or max Comparator
      * @param aPlainTick
      */
-    private void addTickToPQ(Map<String, PriorityQueue<Ticker>> aPQMap, Comparator<Ticker> aComp, Ticker aPlainTick) {
+    private void addTickToPQ(Map<String, PriorityQueue<Tick>> aPQMap, Comparator<Tick> aComp, Tick aPlainTick) {
 
-        PriorityQueue<Ticker> pq = aPQMap.get(aPlainTick.getInstrument());
+        PriorityQueue<Tick> pq = aPQMap.get(aPlainTick.getInstrument());
 
         if (pq == null) {
             pq = new PriorityQueue<>((a, b)-> { return aComp.compare(a,b);});
@@ -351,9 +351,9 @@ public class SlidingWindow implements Runnable{
      * @param aPQMap  min or max PQ
      * @param aPlainTick
      */
-    private void removeTickFromPQ(Map<String, PriorityQueue<Ticker>> aPQMap, Ticker aPlainTick) {
+    private void removeTickFromPQ(Map<String, PriorityQueue<Tick>> aPQMap, Tick aPlainTick) {
 
-        PriorityQueue<Ticker> pq = aPQMap.get(aPlainTick.getInstrument());
+        PriorityQueue<Tick> pq = aPQMap.get(aPlainTick.getInstrument());
 
         if (pq == null) {
             return;
@@ -375,18 +375,18 @@ public class SlidingWindow implements Runnable{
      * Time Complexity O(1)
      * Space Complexity O(1)
      *
-     * @param tickerQ
+     * @param tickQ
      * @param aComp
      * @param aPlainTick
      */
-    private void addToSortedSet(TreeSet<Ticker> tickerQ, Comparator<Ticker> aComp, Ticker aPlainTick) {
+    private void addToSortedSet(TreeSet<Tick> tickQ, Comparator<Tick> aComp, Tick aPlainTick) {
 
-        if (tickerQ == null) {
-            tickerQ = new TreeSet<>(aComp);
+        if (tickQ == null) {
+            tickQ = new TreeSet<>(aComp);
         }
 
-        tickerQ.add(aPlainTick);
-        tickerMap.put(aPlainTick.getInstrument(),tickerQ);
+        tickQ.add(aPlainTick);
+        tickerMap.put(aPlainTick.getInstrument(), tickQ);
 
     }
 
@@ -395,27 +395,27 @@ public class SlidingWindow implements Runnable{
      * Removes the instrument that's leaving the window from the head of the queue
      * Time Complexity O(1)
      * Space Complexity O(1)
-     * @param tickerQ
+     * @param tickQ
      * @param anInstrument
-     * @return tickerQ
+     * @return tickQ
      */
-    private TreeSet<Ticker> removeFromQueue(TreeSet<Ticker> tickerQ, String anInstrument) {
+    private TreeSet<Tick> removeFromQueue(TreeSet<Tick> tickQ, String anInstrument) {
 
-        if (tickerQ == null) {
+        if (tickQ == null) {
             return null;
         }
 
-        tickerQ.pollFirst();
+        tickQ.pollFirst();
 
-        if(tickerQ.isEmpty()) {
+        if(tickQ.isEmpty()) {
             tickerMap.remove(anInstrument);
-            tickerQ = null;
+            tickQ = null;
         }
         else {
-            tickerMap.put(anInstrument, tickerQ);
+            tickerMap.put(anInstrument, tickQ);
         }
 
-        return tickerQ;
+        return tickQ;
     }
 
 
@@ -430,15 +430,15 @@ public class SlidingWindow implements Runnable{
 
         Temporal now = ZonedDateTime.now() ;
 
-        for(TreeSet<Ticker> tickerQ: tickerMap.values()) {
-                Ticker t = tickerQ.first();
+        for(TreeSet<Tick> tickQ : tickerMap.values()) {
+                Tick t = tickQ.first();
 
                 while (t != null) {
                     Instant tickts = Instant.ofEpochMilli(t.getTimestamp());
                     if (! is_within_window(tickts, now, windowMillis)) {
-                        tickerQ = remove(tickerQ, t);
-                        if (tickerQ != null) {
-                            t = tickerQ.first();
+                        tickQ = remove(tickQ, t);
+                        if (tickQ != null) {
+                            t = tickQ.first();
                         }
                     } else {
                         break;

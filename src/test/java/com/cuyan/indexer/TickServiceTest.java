@@ -1,6 +1,6 @@
 package com.cuyan.indexer;
 
-import com.cuyan.indexer.model.Ticker;
+import com.cuyan.indexer.model.Tick;
 import com.cuyan.indexer.model.TickStats;
 import com.cuyan.indexer.service.TickService;
 import org.junit.jupiter.api.AfterEach;
@@ -45,7 +45,7 @@ class TickServiceTest {
 		long epoch_msecs_till_now = start_time.toEpochSecond() * MSECS_PER_SECOND;
 
 		String instrument = "XYZ";
-		Ticker aLatePriceEqualTick = new Ticker(instrument,10.0,
+		Tick aLatePriceEqualTick = new Tick(instrument,10.0,
 						epoch_msecs_till_now - (long)( (SLIDINGWINDOW_DURATION_SECS_TEST + 1) * MSECS_PER_SECOND));
 
 		ResponseEntity response = tickService.add(aLatePriceEqualTick);
@@ -62,9 +62,9 @@ class TickServiceTest {
 		long epoch_msecs_till_now = start_time.toEpochSecond() * MSECS_PER_SECOND;
 
 		String instrument = "XYZ";
-		Ticker aPriceEqualTick_2_half_secs_ago = new Ticker(instrument,10.0, epoch_msecs_till_now - (long)(2.5 * MSECS_PER_SECOND));
-		Ticker aPriceEqualTick_1Sec_ago = new Ticker(instrument,30.0, epoch_msecs_till_now - (1 * MSECS_PER_SECOND));
-		Ticker aPriceEqualTick_now = new Ticker(instrument,50.0, epoch_msecs_till_now);
+		Tick aPriceEqualTick_2_half_secs_ago = new Tick(instrument,10.0, epoch_msecs_till_now - (long)(2.5 * MSECS_PER_SECOND));
+		Tick aPriceEqualTick_1Sec_ago = new Tick(instrument,30.0, epoch_msecs_till_now - (1 * MSECS_PER_SECOND));
+		Tick aPriceEqualTick_now = new Tick(instrument,50.0, epoch_msecs_till_now);
 
 
 		ResponseEntity response = tickService.add(aPriceEqualTick_2_half_secs_ago);
@@ -121,9 +121,9 @@ class TickServiceTest {
 		long epoch_msecs_till_now = start_time.toEpochSecond() * MSECS_PER_SECOND;
 
 		String instrument = "XYZ";
-		Ticker aPriceEqualTick_2_half_secs_ago = new Ticker(instrument,10.0, epoch_msecs_till_now - (long)(2.5 * MSECS_PER_SECOND));
-		Ticker aPriceEqualTick_1Sec_ago = new Ticker(instrument,30.0, epoch_msecs_till_now - (1 * MSECS_PER_SECOND));
-		Ticker aPriceEqualTick_now = new Ticker(instrument,50.0, epoch_msecs_till_now);
+		Tick aPriceEqualTick_2_half_secs_ago = new Tick(instrument,10.0, epoch_msecs_till_now - (long)(2.5 * MSECS_PER_SECOND));
+		Tick aPriceEqualTick_1Sec_ago = new Tick(instrument,30.0, epoch_msecs_till_now - (1 * MSECS_PER_SECOND));
+		Tick aPriceEqualTick_now = new Tick(instrument,50.0, epoch_msecs_till_now);
 
 
 		// The order of adding to the service is different from the previous test

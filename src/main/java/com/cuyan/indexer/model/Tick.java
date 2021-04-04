@@ -2,7 +2,7 @@ package com.cuyan.indexer.model;
 
 import java.util.Objects;
 
-public class Ticker {
+public class Tick {
     protected String instrument;
 
     protected double price;
@@ -12,7 +12,7 @@ public class Ticker {
     /**
      *
      */
-    public Ticker() {
+    public Tick() {
         super();
     }
 
@@ -22,7 +22,7 @@ public class Ticker {
      * @param price
      * @param timestamp
      */
-    public Ticker(String instrument, double price, long timestamp) {
+    public Tick(String instrument, double price, long timestamp) {
         this.instrument = instrument;
         this.price = price;
         this.timestamp = timestamp;
@@ -44,7 +44,7 @@ public class Ticker {
 
     @Override
     public String toString() {
-        return "Ticker{" +
+        return "Tick{" +
                 "instrument='" + instrument + '\'' +
                 ", price=" + price +
                 ", timestamp=" + timestamp +

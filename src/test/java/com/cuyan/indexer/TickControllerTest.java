@@ -1,6 +1,6 @@
 package com.cuyan.indexer;
 
-import com.cuyan.indexer.model.Ticker;
+import com.cuyan.indexer.model.Tick;
 import com.cuyan.indexer.model.TickStats;
 import com.cuyan.indexer.service.TickService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +16,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.ZonedDateTime;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,7 +44,7 @@ public class TickControllerTest {
     void postTick() throws Exception {
 
         // when
-        Ticker aPriceEqualTick = makeValidTick();
+        Tick aPriceEqualTick = makeValidTick();
         when(tickService.add(aPriceEqualTick)).thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
 
 
@@ -103,12 +102,12 @@ public class TickControllerTest {
         return map;
     }
 
-    private Ticker makeValidTick() {
+    private Tick makeValidTick() {
 
         ZonedDateTime start_time = ZonedDateTime.now();
         long epoch_msecs_till_now = start_time.toEpochSecond() * MSECS_PER_SECOND;
 
-        return  new Ticker("XYZ",10.0,epoch_msecs_till_now );
+        return  new Tick("XYZ",10.0,epoch_msecs_till_now );
 
     }
 

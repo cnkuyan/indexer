@@ -1,6 +1,6 @@
 package com.cuyan.indexer.service;
 
-import com.cuyan.indexer.model.Ticker;
+import com.cuyan.indexer.model.Tick;
 import com.cuyan.indexer.model.TickStats;
 import com.cuyan.indexer.util.SlidingWindow;
 import org.slf4j.Logger;
@@ -73,7 +73,7 @@ public class TickService {
      * @param aPlainTick
      * @return
      */
-    public ResponseEntity add(Ticker aPlainTick) {
+    public ResponseEntity add(Tick aPlainTick) {
 
         Instant tickts = Instant.ofEpochMilli(aPlainTick.getTimestamp());
         if(! SlidingWindow.is_within_window(tickts,ZonedDateTime.now(), windowMsecs)) {

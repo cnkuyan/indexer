@@ -1,6 +1,6 @@
 package com.cuyan.indexer.controller;
 
-import com.cuyan.indexer.model.Ticker;
+import com.cuyan.indexer.model.Tick;
 import com.cuyan.indexer.model.TickStats;
 import com.cuyan.indexer.service.TickService;
 import org.slf4j.Logger;
@@ -24,7 +24,7 @@ public class TickController {
 
 
     @PostMapping(value = "/ticks",consumes = {"application/json"},produces = {"application/json"})
-     public ResponseEntity registerTick(@RequestBody Ticker plainTick) {
+     public ResponseEntity registerTick(@RequestBody Tick plainTick) {
         ResponseEntity ret = tickService.add(plainTick);
         return ret;
     }
