@@ -137,7 +137,7 @@ public class SlidingWindow implements Runnable{
         synchronized (lock) {
             //addToSortedSet(tickQ, , aPlainTick);
             addToSortedSet(tickQ, (a, b) -> {
-                return (int) (a.getTimestamp() - b.getTimestamp());
+                return (int) (b.getTimestamp() - a.getTimestamp());
             }, aPlainTick);
 
             addTickToPQ(tickerMinPQMap, (a, b) -> {
