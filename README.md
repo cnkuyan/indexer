@@ -11,6 +11,26 @@ There are three API endpoints:
 • GET /statistics/{instrument_id} : This one returns the statistics based on the ticks of the given instrument of the last 60 seconds (sliding time interval)
 
 
+### Development Assumptions 
+
+ I assumed ;
+ 1. The /ticks endpoint can get called several times a second.
+ 2. The application will not be running behind a load balancer. This implementation is a single node application, that can't know what statistics another instance has accumulated.
+ 
+
+### Possible Improvements To The Application
+
+ The application could possible be improved upon under following topics:
+ 1. Making it ready to work behind a load balancer, by using a distributed key-value store instead of the local map data structures. 
+ 2. Giving the ability to scale even more, by providing a sharding mechanism at the core, to distribute the load based on a certain key. 
+
+
+### Did I Like Working On This Problem
+
+ I like all kinds of challenges. I liked this one as well.
+ Aside from personal pleasure, it gave me an introductory sense into the characteristics of the work that goes into the Financial Index collection and distribution .
+
+
 ### Configuring the Sliding Time Window Period:
  
  The application has been configured with a default value of 60 seconds for the sliding time interval.
@@ -64,9 +84,13 @@ The following will be carried using the `curl` tool.
 curl http://localhost:8080/ticks --header "Content-Type: application/json"  --request POST  --data '{ "instrument": "IBM", "timestamp": 1617473494140, "price": 130.1 }'
 ```
 
+If the Tick's timestamp is older than 1 second, it will be rejected by the endpoint with `Http NoContent` response.
+
 #### Querying the Statistics of all instruments:
+
 ```
 curl http://localhost:8080/statistics
+
 ```
 
 #### Querying the Statistics of a Specific instrument:
