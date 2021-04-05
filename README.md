@@ -1,4 +1,4 @@
-#Financial Indexer
+# Financial Indexer
 
 This app provides an API, for the clients to query real-time price statistics of financial instruments received within the last 60 seconds (sliding time interval).
 
@@ -30,7 +30,7 @@ https://git-scm.com
 
 ### Installing and Running the Tests:
 
-You have to clone repository to your local machine
+Clone repository to your local machine
 
 ```
 git clone git@github.com:cnkuyan/indexer.git
@@ -50,20 +50,21 @@ mvn clean install package -DskipTests
 
 
 ### Running the app:
-
-'java -jar target/indexer-0.0.1-SNAPSHOT.jar'
+```
+java -jar target/indexer-0.0.1-SNAPSHOT.jar
+```
 
 
 ### Interacting with the App:
 
 The following will be carried using the `curl` tool.
 
-####Sending data with curl
+#### Sending data with curl
 ```
 curl http://localhost:8080/ticks --header "Content-Type: application/json"  --request POST  --data '{ "instrument": "IBM", "timestamp": 1617473494140, "price": 130.1 }'
 ```
 
-####Querying the Statistics of all instruments:
+#### Querying the Statistics of all instruments:
 ```
 curl http://localhost:8080/statistics
 ```
