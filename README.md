@@ -69,6 +69,11 @@ curl http://localhost:8080/ticks --header "Content-Type: application/json"  --re
 curl http://localhost:8080/statistics
 ```
 
+#### Querying the Statistics of a Specific instrument:
+```
+curl http://localhost:8080/statistics/{instrument_id}
+```
+
 ### Built With
 
 * [SpringBoot](https://projects.spring.io/spring-boot/) - The web framework used for creating APIs
