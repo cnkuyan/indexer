@@ -4,7 +4,7 @@ This app provides an API, for the clients to query real-time price statistics of
 
 There are three API endpoints:
 
-• POST /ticks  :  This one is called every time we receive a tick. It is also the sole input of this rest API
+• POST /ticks  :  This one is called by the clients to register a Tick. It is also the sole input of this rest API
    
 • GET /statistics : This one returns the statistics based on the ticks of all instruments of the last 60 seconds (sliding time interval)
 
