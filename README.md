@@ -11,6 +11,12 @@ There are three API endpoints:
 • GET /statistics/{instrument_id} : This one returns the statistics based on the ticks of the given instrument of the last 60 seconds (sliding time interval)
 
 
+### Configuring the Sliding Time Window Period:
+ 
+ The application has been configured with a default value of 60 seconds for the sliding time interval.
+ In order to change it to another value,  please update the constant value SLIDINGWINDOW_DURATION_SECS defined in IndexerAppllication.java
+
+
 ### Development Assumptions 
 
  I assumed ;
@@ -30,13 +36,6 @@ There are three API endpoints:
  I like all kinds of challenges. I liked this one as well.
  Aside from personal pleasure, it gave me an introductory sense into the characteristics of the work that goes into the Financial Index collection and distribution .
 
-
-### Configuring the Sliding Time Window Period:
- 
- The application has been configured with a default value of 60 seconds for the sliding time interval.
- In order to change it to another value,  please update the constant value SLIDINGWINDOW_DURATION_SECS defined in IndexerAppllication.java
- 
- 
 
 ### Prerequisites:
 
