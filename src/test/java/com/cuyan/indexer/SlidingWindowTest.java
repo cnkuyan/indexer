@@ -45,7 +45,7 @@ class SlidingWindowTest {
 
 		List<Tick> ticks = new ArrayList<>(TICK_CNT);
 
-		//Create ticks , younger from older
+		//Create ticks , younger to older
 		ticks.add(new Tick(instrument,10,epoch_now - (long)( (1) * MSECS_PER_SECOND)));
 		ticks.add(new Tick(instrument,20,epoch_now - (long)( (2) * MSECS_PER_SECOND)));
 		ticks.add(new Tick(instrument,30,epoch_now - (long)( (3) * MSECS_PER_SECOND)));
