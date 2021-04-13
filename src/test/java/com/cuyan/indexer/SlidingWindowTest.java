@@ -45,7 +45,7 @@ class SlidingWindowTest {
 
 		List<Tick> ticks = new ArrayList<>(TICK_CNT);
 
-		//Create ticks , younger to older
+		//Create ticks , younger (more recent) to older
 		ticks.add(new Tick(instrument,10,epoch_now - (long)( (1) * MSECS_PER_SECOND)));
 		ticks.add(new Tick(instrument,20,epoch_now - (long)( (2) * MSECS_PER_SECOND)));
 		ticks.add(new Tick(instrument,30,epoch_now - (long)( (3) * MSECS_PER_SECOND)));
@@ -53,7 +53,7 @@ class SlidingWindowTest {
 		ticks.add(new Tick(instrument,50,epoch_now - (long)( (5) * MSECS_PER_SECOND)));
 
 
-		//Add ticks to the slidingwindow, young first
+		//Add ticks to the slidingwindow, most recent first
 		double total=0,avg = 0.0;
 		for (Tick t: ticks) {
 			sw.add(t);
@@ -62,7 +62,7 @@ class SlidingWindowTest {
 		avg = total / TICK_CNT;
 
 		//Start the slidingwindow processing
-		//Expect: old ticks consumed first
+		//Expect: older ticks consumed first
 		sw.start();
 
 		Thread.sleep((long) 1 * MSECS_PER_SECOND);
