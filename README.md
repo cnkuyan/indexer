@@ -27,7 +27,7 @@ There are three API endpoints:
 ### Possible Improvements To The Application
 
  The application could possible be improved upon under following topics:
- 1. Making it ready to work behind a load balancer, by using a distributed key-value store instead of the local map data structures. 
+ 1. Making it ready to work behind a load balancer, by using a distributed in-memory key-value store (such as Memcached) instead of the node-local associative data structures (HashMap). 
  2. Giving the ability to scale even more, by providing a sharding mechanism at the core, to distribute the load based on a certain key. 
 
 
@@ -83,7 +83,7 @@ The following will be carried using the `curl` tool.
 curl http://localhost:8080/ticks --header "Content-Type: application/json"  --request POST  --data '{ "instrument": "IBM", "timestamp": 1617473494140, "price": 130.1 }'
 ```
 
-If the Tick's timestamp is older than 1 second, it will be rejected by the endpoint with `Http NoContent` response.
+If the Tick's timestamp is older than 1 minute, it will be rejected by the endpoint with `Http NoContent` response.
 
 #### Querying the Statistics of all instruments:
 
