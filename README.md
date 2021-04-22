@@ -31,12 +31,6 @@ There are three API endpoints:
  2. Giving the ability to scale even more, by providing a sharding mechanism at the core, to distribute the load based on a certain key. 
 
 
-### Did I Like Working On This Problem
-
- I like all kinds of challenges. I liked this one as well.
- Aside from personal pleasure, it gave me an introductory sense into the characteristics of the work that goes into the Financial Index collection and distribution .
-
-
 ### Prerequisites:
 
 You need Maven, Git and  Java SE Runtime Environment 11 (minimum)  to run this project. 
